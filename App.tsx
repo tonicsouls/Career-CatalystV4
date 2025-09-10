@@ -4,11 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { SparklesIcon } from './components/icons/SparklesIcon';
 import PhasedWizard from './components/PhasedWizard';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { TimelineEvent, Phase, PhaseStatus, BrainDumpModule, BrainDumpStory, GeneratedResumeData, SavedResumeVersion, ChatMessage, SavedLinkedInContent, HistoryState, ActiveApp } from './types';
+import { TimelineEvent, Phase, PhaseStatus, BrainDumpModule, BrainDumpStory, GeneratedResumeData, SavedResumeVersion, ChatMessage, SavedLinkedInContent, HistoryState, ActiveApp, InitialAnalysisResult } from './types';
 import { sampleTimelineEvents, sampleJobDescription } from './utils/sampleData';
 import SideNav from './components/SideNav';
 import { MenuIcon } from './components/icons/MenuIcon';
-import { regenerateProjections } from './services/geminiService';
+import { regenerateProjections, structureInitialBrainDump } from './services/geminiService';
 import LinkedInOptimizer from './components/LinkedInOptimizer';
 import HeadshotGenerator from './components/HeadshotGenerator';
 import Dashboard from './components/Dashboard';
@@ -25,8 +25,8 @@ import WebsiteBuilderModal from './components/WebsiteBuilderModal';
 
 
 const initialPhases: Phase[] = [
-    { id: 'resume_jd', name: 'Upload Docs', status: PhaseStatus.Active, section: 'Foundation', step: 1, timeEstimate: 'Est. 2 mins' },
-    { id: 'timeline', name: 'Build Timeline', status: PhaseStatus.Locked, section: 'AI Insight Report', step: 1, timeEstimate: 'Est. 10-15 mins' },
+    { id: 'resume_jd', name: 'Upload & Analyze', status: PhaseStatus.Active, section: 'Foundation', step: 1, timeEstimate: 'Est. 2 mins' },
+    { id: 'timeline', name: 'Enhance Resume', status: PhaseStatus.Locked, section: 'AI Insight Report', step: 1, timeEstimate: 'Est. 10-15 mins' },
     { id: 'braindump', name: 'Brain Dump', status: PhaseStatus.Locked, section: 'Deep Dive', step: 1, timeEstimate: 'Est. 15-20 mins' },
     { id: 'cv_resume_generate', name: 'Generate Resume', status: PhaseStatus.Locked, section: 'Asset Generation', step: 1, timeEstimate: 'Est. 2 mins' },
     { id: 'cv_resume_review', name: 'Review & Edit Resume', status: PhaseStatus.Locked, section: 'Asset Generation', step: 2, timeEstimate: 'Est. 5-10 mins' },
@@ -35,13 +35,13 @@ const initialPhases: Phase[] = [
 ];
 
 const App: React.FC = () => {
-  const [phases, setPhases] = useLocalStorage<Phase[]>('appPhases_v8', initialPhases);
-  const [timelineEvents, setTimelineEvents] = useLocalStorage<TimelineEvent[]>('timelineEvents_v3', []);
-  const [jobDescription, setJobDescription] = useLocalStorage<string>('jobDescription_v3', '');
-  const [brainDumpModules, setBrainDumpModules] = useLocalStorage<BrainDumpModule[]>('brainDumpModules_v3', []);
-  const [generatedResume, setGeneratedResume] = useLocalStorage<GeneratedResumeData | null>('generatedResume_v2', null);
-  const [savedResumeVersions, setSavedResumeVersions] = useLocalStorage<SavedResumeVersion[]>('savedResumeVersions_v2', []);
-  const [generatedCoverLetter, setGeneratedCoverLetter] = useLocalStorage<string | null>('generatedCoverLetter_v2', null);
+  const [phases, setPhases] = useLocalStorage<Phase[]>('appPhases_v9', initialPhases);
+  const [timelineEvents, setTimelineEvents] = useLocalStorage<TimelineEvent[]>('timelineEvents_v4', []);
+  const [jobDescription, setJobDescription] = useLocalStorage<string>('jobDescription_v4', '');
+  const [brainDumpModules, setBrainDumpModules] = useLocalStorage<BrainDumpModule[]>('brainDumpModules_v4', []);
+  const [generatedResume, setGeneratedResume] = useLocalStorage<GeneratedResumeData | null>('generatedResume_v3', null);
+  const [savedResumeVersions, setSavedResumeVersions] = useLocalStorage<SavedResumeVersion[]>('savedResumeVersions_v3', []);
+  const [generatedCoverLetter, setGeneratedCoverLetter] = useLocalStorage<string | null>('generatedCoverLetter_v3', null);
   const [isNavOpen, setIsNavOpen] = useState(true);
   const [activeApp, setActiveApp] = useState<ActiveApp>('dashboard');
   const [openWizardOnLoad, setOpenWizardOnLoad] = useState(false);
@@ -49,6 +49,8 @@ const App: React.FC = () => {
   // Asset Hub State
   const [savedHeadshots, setSavedHeadshots] = useLocalStorage<string[]>('savedHeadshots_v1', []);
   const [savedLinkedInContent, setSavedLinkedInContent] = useLocalStorage<SavedLinkedInContent[]>('savedLinkedInContent_v1', []);
+  const [initialAnalysis, setInitialAnalysis] = useLocalStorage<InitialAnalysisResult | null>('initialAnalysis_v1', null);
+
 
   // Journey Completion State
   const [hasSeenCompletionScreen, setHasSeenCompletionScreen] = useLocalStorage('hasSeenCompletionScreen_v1', false);
@@ -115,7 +117,7 @@ const App: React.FC = () => {
   };
 
   const pushToHistory = () => {
-    setHistory(prev => [...prev, { activeApp }]);
+    setHistory(prev => [...prev, { activeApp, phases }]);
   };
 
   const handleBack = () => {
@@ -126,6 +128,7 @@ const App: React.FC = () => {
 
     const lastState = history[history.length - 1];
     setActiveApp(lastState.activeApp);
+    setPhases(lastState.phases);
     setHistory(prev => prev.slice(0, -1));
   };
 
@@ -220,27 +223,35 @@ const App: React.FC = () => {
       setHistory([]);
   };
 
-  const handlePhase1Complete = (resumeTexts: string[], jdText: string) => {
-    const combinedResumeText = resumeTexts.join('\n\n---\n\n');
-    if (timelineEvents.length === 0 && combinedResumeText) {
-      setTimelineEvents([
-        {
-          id: Date.now(),
-          title: 'My Career Story (from Resumes)',
-          date: 'Initial Upload',
-          description: combinedResumeText,
-        },
-      ]);
-    }
+  const handlePhase1Complete = (analysisResult: InitialAnalysisResult, jdText: string) => {
+    setInitialAnalysis(analysisResult);
     if (jdText) {
-      setJobDescription(jdText);
+        setJobDescription(jdText);
     }
     advanceToPhase('timeline');
   };
   
-  const handlePhase2Complete = (modules: BrainDumpModule[]) => {
-    setBrainDumpModules(modules);
-    advanceToPhase('braindump');
+  const handlePhase2Complete = async (updatedResume: InitialAnalysisResult) => {
+    setInitialAnalysis(updatedResume); // Save the edited resume.
+    
+    // Create timeline events from the experience section to seed the brain dump
+    const timelineEventsFromExperience: TimelineEvent[] = updatedResume.experience.map((exp, index) => ({
+        id: Date.now() + index,
+        title: exp.title,
+        company: exp.company,
+        date: exp.dates,
+        description: exp.achievements.join('\n- '),
+    }));
+    setTimelineEvents(timelineEventsFromExperience);
+    
+    try {
+        const structuredModules = await structureInitialBrainDump(timelineEventsFromExperience);
+        setBrainDumpModules(structuredModules);
+        advanceToPhase('braindump');
+    } catch(e) {
+        console.error("Failed to structure brain dump for Phase 3", e);
+        alert("There was an error preparing the next step. Please try again.");
+    }
   };
 
   const handlePhase3Complete = () => {
@@ -283,8 +294,6 @@ const App: React.FC = () => {
   const ciPhase = phases.find(p => p.id === 'continuous_improvement');
   const isCIUnlocked = ciPhase?.status !== PhaseStatus.Locked;
 
-  // FIX: Corrected variable names from 'onStartCatalyst', etc. to 'handleStartCatalyst', etc.
-  // to match the defined handler functions in this component.
   const dashboardProps = {
     onStartCatalyst: handleStartCatalyst,
     onGoToContinuousImprovement: handleGoToContinuousImprovement,
@@ -322,7 +331,9 @@ const App: React.FC = () => {
         setGeneratedCoverLetter,
         onPhase5Complete: handlePhase5Complete,
         hasSeenCompletionScreen,
-        setHasSeenCompletionScreen
+        setHasSeenCompletionScreen,
+        initialAnalysis,
+        setInitialAnalysis,
     };
 
     switch(activeApp) {
@@ -330,12 +341,9 @@ const App: React.FC = () => {
             return <Dashboard {...dashboardProps} />;
         case 'catalyst':
             return (
-                <div className="flex flex-1 overflow-hidden">
-                    <SideNav phases={phases} isOpen={isNavOpen} onNavigate={navigateToPhase} />
-                    <main className="flex-1 overflow-y-auto">
-                        <PhasedWizard {...wizardProps} />
-                    </main>
-                </div>
+                <main className="flex-1 overflow-y-auto">
+                    <PhasedWizard {...wizardProps} />
+                </main>
             );
         case 'linkedin':
              return (
@@ -384,13 +392,8 @@ const App: React.FC = () => {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3">
                {activeApp !== 'dashboard' && (
-                <button onClick={handleBack} disabled={history.length === 0} className="p-2 rounded-md hover:bg-neutral-200 text-neutral-500 disabled:opacity-40 disabled:cursor-not-allowed" title="Go Back">
+                <button onClick={handleBack} className="p-2 rounded-md hover:bg-neutral-200 text-neutral-500" title="Go Back">
                     <ArrowLeftIcon className="h-6 w-6" />
-                </button>
-               )}
-               {activeApp === 'catalyst' && (
-                <button onClick={() => setIsNavOpen(!isNavOpen)} className="p-2 rounded-md hover:bg-neutral-200 text-neutral-500" title="Toggle Menu">
-                    <MenuIcon className="h-6 w-6" />
                 </button>
                )}
               <button onClick={() => handleGoHome(true)} className="flex items-center space-x-3 group" title="Go to Home Screen">
@@ -413,7 +416,7 @@ const App: React.FC = () => {
       </header>
       {renderActiveApp()}
 
-      {activeApp !== 'dashboard' && (
+      {activeApp !== 'dashboard' && activeApp !== 'catalyst' && (
         <FooterNav
           onStartCatalyst={handleStartCatalyst}
           onStartProjectWizard={handleStartProjectWizard}

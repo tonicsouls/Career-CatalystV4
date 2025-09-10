@@ -224,7 +224,7 @@ const Phase3BrainDump: React.FC<Phase3BrainDumpProps> = ({ modules, setModules, 
                                     className="w-full flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-neutral-800 hover:bg-neutral-700 transition-colors"
                                 >
                                     <CubeIcon className="h-5 w-5 mr-2" />
-                                    Unpack a Project with AI Wizard
+                                    Launch Project Breakdown Assistant
                                 </button>
                                  <button
                                     onClick={() => addStory(activeModule.id)}
@@ -254,7 +254,7 @@ const Phase3BrainDump: React.FC<Phase3BrainDumpProps> = ({ modules, setModules, 
             </button>
         </div>
     </div>
-    <Modal isOpen={isProjectWizardOpen} onClose={() => setIsProjectWizardOpen(false)} title="Unpack a Project">
+    <Modal isOpen={isProjectWizardOpen} onClose={() => setIsProjectWizardOpen(false)} title="Project Breakdown Assistant">
         <ProjectWizard onComplete={handleAddProjectStory} timelineEvents={timelineEvents} />
     </Modal>
     </>

@@ -11,26 +11,32 @@ interface TimelineEditorProps {
   setEvents: (events: TimelineEvent[]) => void;
   onGenerateReport: () => void;
   isLoading: boolean;
+  onInteraction: () => void;
 }
 
-const TimelineEditor: React.FC<TimelineEditorProps> = ({ events, setEvents, onGenerateReport, isLoading }) => {
+const TimelineEditor: React.FC<TimelineEditorProps> = ({ events, setEvents, onGenerateReport, isLoading, onInteraction }) => {
   
   const addEvent = () => {
     const newEvent: TimelineEvent = {
       id: Date.now(),
       title: 'New Role or Event',
+      company: 'Company or Institution',
       date: 'Year - Year',
       description: '',
+      isNew: true, // Mark as new to open in edit mode by default
     };
-    setEvents([...events, newEvent]);
+    setEvents([newEvent, ...events]);
+    onInteraction();
   };
 
   const updateEvent = (id: number, updatedEvent: Partial<TimelineEvent>) => {
-    setEvents(events.map(event => (event.id === id ? { ...event, ...updatedEvent } : event)));
+    setEvents(events.map(event => (event.id === id ? { ...event, ...updatedEvent, isNew: false } : event)));
+    onInteraction();
   };
 
   const deleteEvent = (id: number) => {
     setEvents(events.filter(event => event.id !== id));
+    onInteraction();
   };
     
   const exportTimeline = () => {
@@ -53,14 +59,20 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({ events, setEvents, onGe
                 Add, edit, and organize your career milestones. This story will fuel your AI-generated assets.
                 </p>
             </div>
-            <button onClick={exportTimeline} className="flex-shrink-0 flex items-center space-x-2 px-3 py-2 text-xs font-medium rounded-md text-neutral-600 bg-neutral-100 hover:bg-neutral-200 transition-colors" title="Save timeline to desktop">
-                <DownloadIcon className="h-4 w-4" />
-                <span>Export</span>
-            </button>
+            <div className="flex items-center space-x-2 flex-shrink-0">
+                 <button onClick={addEvent} className="flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-md text-white bg-neutral-800 hover:bg-neutral-700 transition-colors">
+                    <PlusIcon className="h-4 w-4" />
+                    <span>Add Event</span>
+                </button>
+                <button onClick={exportTimeline} className="flex items-center space-x-2 px-3 py-2 text-xs font-medium rounded-md text-neutral-600 bg-neutral-100 hover:bg-neutral-200 transition-colors" title="Save timeline to desktop">
+                    <DownloadIcon className="h-4 w-4" />
+                    <span>Export</span>
+                </button>
+            </div>
         </div>
       </div>
 
-      <div className="p-6 space-y-6 min-h-[300px] flex flex-col justify-center">
+      <div className="p-6 space-y-6 min-h-[300px]">
         {events.length > 0 ? (
           <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
             {events.map((event, index) => (
@@ -69,26 +81,18 @@ const TimelineEditor: React.FC<TimelineEditorProps> = ({ events, setEvents, onGe
                 event={event}
                 onUpdate={updateEvent}
                 onDelete={deleteEvent}
-                isFirst={index === 0}
+                isFirst={index === 0 && events.length === 1}
               />
             ))}
           </div>
         ) : (
             <div className="text-center py-10">
                 <TimelineEmptyStateIllustration className="text-neutral-300 mx-auto" />
+                <p className="mt-4 text-neutral-500">Your timeline is empty. Click "Add Event" to begin.</p>
             </div>
         )}
       </div>
       
-      <div className="bg-neutral-50/80 px-6 py-4 border-t border-neutral-200 rounded-b-xl">
-        <button
-            onClick={addEvent}
-            className="w-full flex items-center justify-center px-4 py-2 border border-neutral-300 text-sm font-medium rounded-md shadow-sm text-neutral-700 bg-white hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-neutral-100 focus:ring-neutral-800 transition-colors"
-          >
-            <PlusIcon className="h-5 w-5 mr-2" />
-            Add Event
-        </button>
-      </div>
     </div>
   );
 };

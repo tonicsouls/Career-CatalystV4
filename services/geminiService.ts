@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { BrainDumpModule, GeneratedResumeData, TimelineEvent, ProjectDetails } from "../types";
+import { BrainDumpModule, GeneratedResumeData, TimelineEvent, ProjectDetails, InitialAnalysisResult, CategorizedSkills } from "../types";
 
 // Ensure the API key is available, otherwise throw an error.
 if (!process.env.API_KEY) {
@@ -228,6 +228,105 @@ const elevatorPitchSchema = {
     required: ["pitches"],
 };
 
+const initialAnalysisSchema = {
+    type: Type.OBJECT,
+    properties: {
+        contactInfo: {
+            type: Type.OBJECT,
+            properties: {
+                name: { type: Type.STRING, description: "The candidate's full name." },
+                email: { type: Type.STRING, description: "The candidate's primary email address." },
+                phone: { type: Type.STRING, description: "The candidate's phone number." },
+                linkedin: { type: Type.STRING, description: "The full URL of the candidate's LinkedIn profile." },
+                location: { type: Type.STRING, description: "The candidate's city and state (e.g., Dallas, TX)." },
+            },
+            required: ["name", "email"]
+        },
+        summary: { 
+            type: Type.STRING, 
+            description: "A concise 2-3 sentence professional summary of the candidate based on the entirety of their resume(s)." 
+        },
+        keySkills: {
+            type: Type.ARRAY,
+            description: "A list of the top 10-15 most important technical and soft skills mentioned in the resume(s).",
+            items: { type: Type.STRING }
+        },
+        experience: {
+            type: Type.ARRAY,
+            description: "The candidate's professional work experience, listed chronologically.",
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    title: { type: Type.STRING },
+                    company: { type: Type.STRING },
+                    location: { type: Type.STRING },
+                    dates: { type: Type.STRING },
+                    achievements: { 
+                        type: Type.ARRAY,
+                        description: "A list of bullet points describing responsibilities and achievements, extracted directly from the resume.",
+                        items: { type: Type.STRING }
+                    },
+                },
+                required: ["title", "company", "dates", "achievements"]
+            }
+        },
+        education: {
+            type: Type.ARRAY,
+            description: "The candidate's educational background.",
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    degree: { type: Type.STRING },
+                    institution: { type: Type.STRING },
+                    dates: { type: Type.STRING, description: "Graduation year or dates of attendance." },
+                },
+                required: ["degree", "institution"]
+            }
+        },
+        matchAnalysis: {
+            type: Type.OBJECT,
+            description: "This field should ONLY be populated if a job description is provided. Otherwise, it should be omitted.",
+            properties: {
+                matchSummary: { type: Type.STRING, description: "A brief, 1-2 sentence analysis of how well the resume(s) align with the job description." },
+                matchingKeywords: {
+                    type: Type.ARRAY,
+                    description: "A list of 5-8 crucial keywords found in BOTH the resume(s) and the job description.",
+                    items: { type: Type.STRING }
+                },
+                missingKeywords: {
+                    type: Type.ARRAY,
+                    description: "A list of 3-5 important keywords from the job description that are MISSING from the resume(s).",
+                    items: { type: Type.STRING }
+                }
+            },
+            required: ["matchSummary", "matchingKeywords", "missingKeywords"]
+        }
+    },
+    required: ["contactInfo", "summary", "keySkills", "experience", "education"]
+};
+
+const skillsCategorizationSchema = {
+    type: Type.OBJECT,
+    properties: {
+        categorizedSkills: {
+            type: Type.ARRAY,
+            description: "A list of 4 skill categories with the provided skills grouped under them.",
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    category: { type: Type.STRING, description: "The name of the skill category (e.g., 'Technical Skills', 'Leadership & Management')." },
+                    skills: {
+                        type: Type.ARRAY,
+                        description: "A list of the skills belonging to this category.",
+                        items: { type: Type.STRING }
+                    }
+                },
+                required: ["category", "skills"]
+            }
+        }
+    },
+    required: ["categorizedSkills"]
+};
 
 /**
  * Analyzes a resume and timeline to structure an initial Brain Dump for the user.
@@ -894,5 +993,123 @@ export const generateHeadshot = async (
     } catch (error) {
         console.error("Error generating headshot:", error);
         throw new Error("Failed to generate AI headshot. Please try a different image or adjust your settings.");
+    }
+};
+
+export const analyzeDocuments = async (resumeTexts: string[], jdText: string): Promise<InitialAnalysisResult> => {
+    const combinedResumes = resumeTexts.join('\n\n--- NEXT RESUME ---\n\n');
+
+    const prompt = `
+        Act as an expert AI recruiting assistant. Your task is to analyze the provided resume(s) and an optional job description to extract key information. The output must be a valid JSON object that strictly adheres to the provided schema.
+
+        **Candidate's Resume(s):**
+        ---
+        ${combinedResumes}
+        ---
+
+        ${jdText ? `
+        **Target Job Description:**
+        ---
+        ${jdText}
+        ---
+        ` : ''}
+
+        **Instructions:**
+        1.  **Parse all provided resume text.** Extract contact details, a professional summary, key skills, the entire work experience section, and the education section.
+        2.  **Handle Multiple Resumes:** If multiple resumes are provided, synthesize the information into a single, cohesive profile.
+        3.  **Job Description Analysis (Conditional):**
+            -   **If a job description is provided**, you MUST populate the 'matchAnalysis' object.
+            -   Analyze the alignment between the resume(s) and the job description.
+            -   Identify keywords present in both (matching) and keywords present in the JD but not the resume (missing).
+            -   **If NO job description is provided**, you MUST OMIT the 'matchAnalysis' object entirely from your JSON response.
+        4.  **Format:** Ensure the final output is a single, valid JSON object matching the schema. Do not include any text or markdown outside of the JSON object.
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: initialAnalysisSchema,
+            }
+        });
+        const jsonString = response.text.trim();
+        return JSON.parse(jsonString);
+    } catch (error) {
+        console.error("Error analyzing documents:", error);
+        if (error instanceof SyntaxError) {
+            throw new Error("Failed to parse the AI's analysis response. The format was invalid. Please try again.");
+        }
+        throw new Error("Failed to analyze documents with AI. Please check the console for details.");
+    }
+};
+
+export const improveSummary = async (currentSummary: string): Promise<string> => {
+    const prompt = `
+        Act as a professional resume writer. Rewrite the following professional summary to be more impactful, concise, and achievement-oriented.
+        
+        **Original Summary:**
+        ---
+        ${currentSummary}
+        ---
+
+        Return only the rewritten summary as a raw string.
+    `;
+    try {
+        const response = await ai.models.generateContent({ model, contents: prompt });
+        return response.text.trim();
+    } catch (error) {
+        console.error("Error improving summary:", error);
+        throw new Error("Failed to improve summary with AI.");
+    }
+};
+
+export const categorizeSkills = async (skills: string[]): Promise<CategorizedSkills[]> => {
+    const prompt = `
+        Act as a professional resume expert. Organize the following list of skills into 4 logical categories (e.g., "Technical Skills", "Leadership", "Software & Tools", "Methodologies").
+        
+        **Skills List:**
+        - ${skills.join('\n- ')}
+
+        Return a valid JSON object matching the schema.
+    `;
+    try {
+        const response = await ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: skillsCategorizationSchema,
+            }
+        });
+        const jsonString = response.text.trim();
+        const result = JSON.parse(jsonString);
+        return result.categorizedSkills || [];
+    } catch (error) {
+        console.error("Error categorizing skills:", error);
+        throw new Error("Failed to categorize skills with AI.");
+    }
+};
+
+export const transcribeAndSummarizeAudio = async (audioBase64: string, mimeType: string): Promise<string> => {
+    const prompt = `This audio recording contains a user's verbal description of their professional background. Please transcribe the audio and then rewrite the transcription into a concise, professional summary suitable for a resume. The summary should be 2-4 sentences long and written in a professional tone. Return only the final summary as a string.`;
+
+    const audioPart = {
+        inlineData: {
+            mimeType,
+            data: audioBase64,
+        },
+    };
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash', // Flash model supports audio input
+            contents: { parts: [audioPart, { text: prompt }] },
+        });
+        return response.text.trim();
+    } catch (error) {
+        console.error("Error transcribing audio:", error);
+        throw new Error("Failed to process audio with AI.");
     }
 };

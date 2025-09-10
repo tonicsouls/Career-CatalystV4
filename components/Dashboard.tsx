@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { ArrowPathIcon } from './icons/ArrowPathIcon';
 import { CameraIcon } from './icons/CameraIcon';
@@ -98,8 +99,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                 />
                  <MajorAppCard 
                     icon={<CVIcon className="h-10 w-10 text-neutral-800" />}
-                    title="CV Project Wizard"
-                    description="Fast-track your story discovery. Use our guided, low-typing wizard to unpack your projects and accomplishments."
+                    title="Project Breakdown Assistant"
+                    description="Fast-track your story discovery. Use our guided, low-typing assistant to unpack your projects and accomplishments."
                     onClick={onStartProjectWizard}
                 />
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -138,8 +139,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <MajorAppCard 
                     icon={<GlobeIcon className="h-10 w-10 text-neutral-800" />}
                     title="Personal Website Session"
-                    description="Take your drafts and projects to the next level with a personal website session. 90 minutes with an expert for only $50."
-                    onClick={onStartWebsiteBuilder}
+                    description="Take your drafts and projects to the next level with a personal website session. 90 minutes with an expert for only $50. Email to inquire."
+                    onClick={() => { window.location.href = "mailto:Darryl.Erby@gmail.com?subject=Personal Website Builder Session Inquiry"; }}
                     tag="$50 Session"
                 />
             </div>

@@ -1,4 +1,5 @@
 
+
 export enum AssetType {
   InsightReport = 'INSIGHT_REPORT',
   LinkedInOverhaul = 'LINKEDIN_OVERHAUL',
@@ -17,6 +18,8 @@ export interface TimelineEvent {
   title: string;
   date: string;
   description: string;
+  company?: string;
+  isNew?: boolean;
 }
 
 export enum PhaseStatus {
@@ -138,4 +141,43 @@ export type ActiveApp = 'dashboard' | 'catalyst' | 'linkedin' | 'headshot' | 'li
 
 export interface HistoryState {
   activeApp: ActiveApp;
+  phases: Phase[];
+}
+
+export interface ResumeSection {
+  title: string;
+  company: string;
+  location: string;
+  dates: string;
+  achievements: string[];
+}
+
+export interface EducationSection {
+    degree: string;
+    institution: string;
+    dates?: string;
+}
+
+export interface InitialAnalysisResult {
+  contactInfo: {
+    name: string;
+    email: string;
+    phone?: string;
+    linkedin?: string;
+    location?: string;
+  };
+  summary: string;
+  keySkills: string[];
+  experience: ResumeSection[];
+  education: EducationSection[];
+  matchAnalysis?: {
+    matchSummary: string;
+    matchingKeywords: string[];
+    missingKeywords: string[];
+  };
+}
+
+export interface CategorizedSkills {
+    category: string;
+    skills: string[];
 }

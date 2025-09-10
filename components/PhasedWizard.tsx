@@ -1,7 +1,7 @@
 
 
 import React from 'react';
-import { BrainDumpModule, GeneratedResumeData, Phase, PhaseStatus, SavedResumeVersion, TimelineEvent } from '../types';
+import { BrainDumpModule, GeneratedResumeData, InitialAnalysisResult, Phase, PhaseStatus, SavedResumeVersion, TimelineEvent } from '../types';
 import Phase1Foundation from './phases/Phase1Foundation';
 import Phase2Insight from './phases/Phase2Insight';
 import Phase3BrainDump from './phases/Phase3BrainDump';
@@ -14,20 +14,20 @@ interface PhasedWizardProps {
   phases: Phase[];
   advanceToPhase: (phaseId: string) => void;
   // Phase 1 props
-  onPhase1Complete: (resumeTexts: string[], jdText: string) => void;
+  onPhase1Complete: (analysisResult: InitialAnalysisResult, jdText: string) => void;
   onFillWithSampleData: () => void;
   openWizardOnLoad: boolean;
   setOpenWizardOnLoad: React.Dispatch<React.SetStateAction<boolean>>;
   // Phase 2 props
-  timelineEvents: TimelineEvent[];
-  setTimelineEvents: (events: TimelineEvent[]) => void;
-  jobDescription: string;
-  onPhase2Complete: (modules: BrainDumpModule[]) => void;
+  initialAnalysis: InitialAnalysisResult | null;
+  onPhase2Complete: (updatedResume: InitialAnalysisResult) => void;
   // Phase 3 props
+  timelineEvents: TimelineEvent[];
   brainDumpModules: BrainDumpModule[];
   setBrainDumpModules: React.Dispatch<React.SetStateAction<BrainDumpModule[]>>;
   onPhase3Complete: () => void;
   // Phase 4 & 5 props
+  jobDescription: string;
   generatedResume: GeneratedResumeData | null;
   setGeneratedResume: (resume: GeneratedResumeData | null) => void;
   onPhase4Complete: () => void;
@@ -55,12 +55,12 @@ const PhasedWizard: React.FC<PhasedWizardProps> = (props) => {
       );
     }
     
-    // FIX: Corrected a type mismatch where PhasedWizard passed TimelineEvent[] to Phase3BrainDump,
-    // which was incorrectly expecting ProjectDetails[]. The props are now explicitly passed to ensure
-    // the correct types are used, resolving the error.
     const phaseMap: { [key: string]: JSX.Element | null } = {
-      'resume_jd': <Phase1Foundation {...props} onComplete={props.onPhase1Complete} />,
-      'timeline': <Phase2Insight {...props} onComplete={props.onPhase2Complete} />,
+      'resume_jd': <Phase1Foundation onComplete={props.onPhase1Complete} />,
+      'timeline': <Phase2Insight 
+                    initialAnalysis={props.initialAnalysis}
+                    onComplete={props.onPhase2Complete}
+                  />,
       'braindump': <Phase3BrainDump 
                       modules={props.brainDumpModules} 
                       setModules={props.setBrainDumpModules} 
