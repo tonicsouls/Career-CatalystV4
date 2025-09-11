@@ -89,6 +89,7 @@ export interface GeneratedResumeData {
     education: Array<{
         degree: string;
         institution: string;
+        dates?: string;
     }>;
     careerProjections: Array<{
         role: string;
@@ -113,7 +114,6 @@ export interface SavedLinkedInContent {
     createdAt: string;
 }
 
-// FIX: Added missing InsightReportData interface to resolve type error in InsightReportViewer.tsx.
 export interface InsightReportData {
     careerFocus: string;
     executiveSummary:string;
@@ -137,7 +137,7 @@ export interface ChatMessage {
   text: string;
 }
 
-export type ActiveApp = 'dashboard' | 'catalyst' | 'linkedin' | 'headshot' | 'linkedin_banner' | 'asset_hub' | 'elevator_pitch';
+export type ActiveApp = 'dashboard' | 'catalyst' | 'linkedin' | 'headshot' | 'linkedin_banner' | 'asset_hub' | 'elevator_pitch' | 'welcome';
 
 export interface HistoryState {
   activeApp: ActiveApp;
@@ -180,4 +180,20 @@ export interface InitialAnalysisResult {
 export interface CategorizedSkills {
     category: string;
     skills: string[];
+}
+
+export interface JobPreset {
+    id: string;
+    name: string;
+    jobDescription: string;
+    initialAnalysis: InitialAnalysisResult | null;
+    createdAt: string;
+}
+
+export interface HeadshotPresetSettings {
+    style: string;
+    businessCategory: string;
+    lighting: string;
+    setting: string;
+    reasoning: string;
 }

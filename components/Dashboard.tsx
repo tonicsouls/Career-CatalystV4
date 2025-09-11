@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { ArrowPathIcon } from './icons/ArrowPathIcon';
 import { CameraIcon } from './icons/CameraIcon';
@@ -9,6 +8,7 @@ import { CVIcon } from './icons/CVIcon';
 import { ArchiveBoxIcon } from './icons/ArchiveBoxIcon';
 import { MegaphoneIcon } from './icons/MegaphoneIcon';
 import { GlobeIcon } from './icons/GlobeIcon';
+import { JobPreset } from '../types';
 
 interface DashboardProps {
   onStartCatalyst: () => void;
@@ -20,6 +20,7 @@ interface DashboardProps {
   onStartElevatorPitch: () => void;
   onStartWebsiteBuilder: () => void;
   isCIUnlocked: boolean;
+  activePreset: JobPreset | null;
 }
 
 const MajorAppCard: React.FC<{
@@ -33,7 +34,7 @@ const MajorAppCard: React.FC<{
 }> = ({ icon, title, description, onClick, isRecommended = false, tag, tagColor = 'bg-amber-600' }) => (
   <button 
     onClick={onClick}
-    className={`p-8 bg-white rounded-xl border-2 border-neutral-200 hover:border-neutral-800 hover:bg-white transition-all text-left group flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-6 shadow-lg hover:shadow-xl`}
+    className={`w-full p-8 bg-white rounded-xl border-2 border-neutral-200 hover:border-neutral-800 hover:bg-white transition-all text-left group flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-6 shadow-lg hover:shadow-xl`}
   >
     <div className={`p-4 rounded-lg bg-neutral-100 w-fit`}>
         {icon}
@@ -56,16 +57,21 @@ const MinorAppCard: React.FC<{
   description: string;
   onClick: () => void;
   disabled?: boolean;
-}> = ({ icon, title, description, onClick, disabled = false }) => (
+  tag?: string;
+  tagColor?: string;
+}> = ({ icon, title, description, onClick, disabled = false, tag, tagColor = 'bg-green-600' }) => (
   <button 
     onClick={onClick}
     disabled={disabled}
-    className={`p-6 bg-white rounded-xl border border-neutral-200 hover:border-neutral-800 hover:bg-white transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-neutral-200 shadow-lg hover:shadow-xl`}
+    className={`p-6 bg-white rounded-xl border border-neutral-200 hover:border-neutral-800 hover:bg-white transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-neutral-200 shadow-lg hover:shadow-xl h-full flex flex-col`}
   >
-    <div className={`p-3 rounded-lg bg-neutral-100 w-fit mb-4`}>
-        {icon}
+    <div className="flex justify-between items-start">
+        <div className={`p-3 rounded-lg bg-neutral-100 w-fit mb-4`}>
+            {icon}
+        </div>
+        {tag && <span className={`text-xs font-semibold text-white px-2 py-0.5 rounded-full ${tagColor}`}>{tag}</span>}
     </div>
-    <div>
+    <div className="flex-1">
         <h3 className="text-lg font-bold text-neutral-800 group-hover:text-neutral-900 transition-colors">{title}</h3>
         <p className="mt-1 text-sm text-neutral-600">{description}</p>
     </div>
@@ -81,21 +87,24 @@ const Dashboard: React.FC<DashboardProps> = ({
     onStartAssetHub,
     onStartElevatorPitch,
     onStartWebsiteBuilder,
-    isCIUnlocked
+    isCIUnlocked,
+    activePreset
 }) => {
     return (
-       <div className="max-w-5xl mx-auto my-10 p-4">
+       <div className="p-4 sm:p-6 lg:p-8">
             <div className="text-center mb-10">
                 <h2 className="text-3xl font-bold text-neutral-800">The Career Catalyst Suite</h2>
                 <p className="mt-4 text-neutral-600 max-w-2xl mx-auto">Your all-in-one platform for professional development. Choose an application below to begin.</p>
             </div>
-            <div className="space-y-6">
+            <div className="max-w-5xl mx-auto space-y-6">
                 <MajorAppCard 
                     icon={<JourneyIcon className="h-10 w-10 text-neutral-800" />}
                     title="Career Catalyst Journey"
                     description="The core experience. A guided, step-by-step process to build your foundational career assets from the ground up."
                     onClick={onStartCatalyst}
                     isRecommended={true}
+                    tag={activePreset ? activePreset.name : undefined}
+                    tagColor="bg-amber-500"
                 />
                  <MajorAppCard 
                     icon={<CVIcon className="h-10 w-10 text-neutral-800" />}
@@ -110,18 +119,21 @@ const Dashboard: React.FC<DashboardProps> = ({
                         description="Tailor assets, practice for interviews, and keep your materials sharp."
                         onClick={onGoToContinuousImprovement}
                         disabled={!isCIUnlocked}
+                        tag={activePreset ? "JD Targeted" : undefined}
                     />
                      <MinorAppCard 
                         icon={<LinkedInIcon className="h-8 w-8 text-neutral-800" />}
                         title="LinkedIn Optimizer"
                         description="Generate compelling headlines, summaries, and more."
                         onClick={onStartLinkedInOptimizer}
+                        tag={activePreset ? "JD Targeted" : undefined}
                     />
                     <MinorAppCard 
                         icon={<MegaphoneIcon className="h-8 w-8 text-neutral-800" />}
                         title="Elevator Pitch"
                         description="Craft and practice your 10-second and 2-minute elevator pitches."
                         onClick={onStartElevatorPitch}
+                        tag={activePreset ? "JD Targeted" : undefined}
                     />
                      <MinorAppCard 
                         icon={<CameraIcon className="h-8 w-8 text-neutral-800" />}

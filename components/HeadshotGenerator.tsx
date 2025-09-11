@@ -1,12 +1,15 @@
 
+
 import React, { useState, useCallback } from 'react';
-import { generateHeadshot } from '../services/geminiService';
+import { generateHeadshot, generateHeadshotPresetFromResume } from '../services/geminiService';
 import { fileToBase64 } from '../utils/fileParser';
 import { CameraIcon } from './icons/CameraIcon';
 import { SparklesIcon } from './icons/SparklesIcon';
 import { UploadIcon } from './icons/UploadIcon';
 import { FileDownloadIcon } from './icons/FileDownloadIcon';
 import { TrashIcon } from './icons/TrashIcon';
+import { InitialAnalysisResult } from '../types';
+import { WandIcon } from './icons/WandIcon';
 
 type UploadedImage = {
     file: File;
@@ -18,9 +21,10 @@ type UploadedImage = {
 interface HeadshotGeneratorProps {
     savedHeadshots: string[];
     setSavedHeadshots: React.Dispatch<React.SetStateAction<string[]>>;
+    initialAnalysis: InitialAnalysisResult | null;
 }
 
-const HeadshotGenerator: React.FC<HeadshotGeneratorProps> = ({ setSavedHeadshots }) => {
+const HeadshotGenerator: React.FC<HeadshotGeneratorProps> = ({ setSavedHeadshots, initialAnalysis }) => {
     const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
     const [style, setStyle] = useState('Corporate');
     const [businessCategory, setBusinessCategory] = useState('Executive');
@@ -30,6 +34,8 @@ const HeadshotGenerator: React.FC<HeadshotGeneratorProps> = ({ setSavedHeadshots
     const [generatedImage, setGeneratedImage] = useState<string | null>(null);
     const [error, setError] = useState('');
     const [isDragging, setIsDragging] = useState(false);
+    const [isPresetLoading, setIsPresetLoading] = useState(false);
+    const [presetReasoning, setPresetReasoning] = useState<string | null>(null);
 
     const processFiles = async (files: FileList | null) => {
         if (!files || files.length === 0) return;
@@ -111,6 +117,28 @@ const HeadshotGenerator: React.FC<HeadshotGeneratorProps> = ({ setSavedHeadshots
         }
     };
 
+    const handleGeneratePreset = async () => {
+        if (!initialAnalysis) {
+            setError("No resume data found. Please complete the Quick Start first to use this feature.");
+            return;
+        }
+        setIsPresetLoading(true);
+        setError('');
+        setPresetReasoning(null);
+        try {
+            const preset = await generateHeadshotPresetFromResume(initialAnalysis);
+            setStyle(preset.style);
+            setBusinessCategory(preset.businessCategory);
+            setLighting(preset.lighting);
+            setSetting(preset.setting);
+            setPresetReasoning(preset.reasoning);
+        } catch (e: any) {
+            setError(e.message || "Failed to generate AI preset.");
+        } finally {
+            setIsPresetLoading(false);
+        }
+    };
+
     const downloadImage = () => {
         if (!generatedImage) return;
         const link = document.createElement('a');
@@ -136,6 +164,26 @@ const HeadshotGenerator: React.FC<HeadshotGeneratorProps> = ({ setSavedHeadshots
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Controls */}
                     <div className="bg-white rounded-xl p-6 border border-neutral-200 space-y-6">
+                        <div>
+                            <h2 className="text-lg font-bold text-neutral-800 mb-2">AI Preset (Optional)</h2>
+                            <p className="text-xs text-neutral-500 mb-3">Let the AI analyze your resume and suggest the best settings for your headshot.</p>
+                            <button
+                                onClick={handleGeneratePreset}
+                                disabled={isPresetLoading || !initialAnalysis}
+                                className="w-full py-2.5 flex items-center justify-center font-semibold rounded-md bg-amber-500 text-white hover:bg-amber-600 disabled:bg-neutral-300 disabled:text-neutral-500 disabled:cursor-not-allowed"
+                            >
+                                <WandIcon className="h-5 w-5 mr-2" />
+                                {isPresetLoading ? 'Analyzing Resume...' : 'Generate AI Preset from Resume'}
+                            </button>
+                            {presetReasoning && (
+                                <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-800 animate-fade-in">
+                                    <span className="font-bold">AI Suggestion:</span> {presetReasoning}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="border-t border-dashed border-neutral-300"></div>
+                        
                         <div>
                             <h2 className="text-lg font-bold text-neutral-800 mb-2">1. Upload Your Photo(s)</h2>
                             <p className="text-xs text-neutral-500 mb-3">Upload up to 3 photos. The AI will synthesize the best features from all images.</p>

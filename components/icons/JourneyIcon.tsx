@@ -1,7 +1,9 @@
 import React from 'react';
 
-export const JourneyIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+// FIX: Added title prop to component props to allow passing a title for accessibility.
+export const JourneyIcon: React.FC<React.SVGProps<SVGSVGElement> & { title?: string }> = ({ title, ...props }) => (
   <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+    {title && <title>{title}</title>}
     <defs>
       <filter id="journey-glow" x="-50%" y="-50%" width="200%" height="200%">
         <feGaussianBlur stdDeviation="3" result="coloredBlur"/>

@@ -1,5 +1,7 @@
+
+
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { BrainDumpModule, GeneratedResumeData, TimelineEvent, ProjectDetails, InitialAnalysisResult, CategorizedSkills } from "../types";
+import { BrainDumpModule, GeneratedResumeData, TimelineEvent, ProjectDetails, InitialAnalysisResult, CategorizedSkills, EducationSection, HeadshotPresetSettings } from "../types";
 
 // Ensure the API key is available, otherwise throw an error.
 if (!process.env.API_KEY) {
@@ -326,6 +328,108 @@ const skillsCategorizationSchema = {
         }
     },
     required: ["categorizedSkills"]
+};
+
+const suggestedSkillsSchema = {
+    type: Type.OBJECT,
+    properties: {
+        suggestedSkills: {
+            type: Type.ARRAY,
+            description: "A list of 5-7 suggested skills.",
+            items: { type: Type.STRING },
+        }
+    },
+    required: ["suggestedSkills"],
+};
+
+const jobTitleSchema = {
+    type: Type.OBJECT,
+    properties: {
+        jobTitle: {
+            type: Type.STRING,
+            description: "The job title extracted from the job description text."
+        }
+    },
+    required: ["jobTitle"],
+};
+
+const summaryOptionsSchema = {
+    type: Type.OBJECT,
+    properties: {
+        summaries: {
+            type: Type.ARRAY,
+            description: "A list of 3 distinct professional summary versions.",
+            items: { type: Type.STRING },
+        }
+    },
+    required: ["summaries"],
+};
+
+const enhancementSuggestionsSchema = {
+    type: Type.OBJECT,
+    properties: {
+        suggestions: {
+            type: Type.ARRAY,
+            description: "An array of suggestions for each provided achievement.",
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    original: { type: Type.STRING, description: "The original achievement text." },
+                    enhancements: {
+                        type: Type.ARRAY,
+                        description: "A list of 2-3 suggested improvements.",
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                type: { type: Type.STRING, description: "The type of suggestion (e.g., 'Add Metrics', 'Use Action Verb', 'Clarify Impact')." },
+                                text: { type: Type.STRING, description: "The rewritten achievement text." },
+                            },
+                             required: ["type", "text"],
+                        }
+                    }
+                },
+                required: ["original", "enhancements"],
+            }
+        }
+    },
+    required: ["suggestions"],
+};
+
+const educationSchema = {
+    type: Type.OBJECT,
+    properties: {
+        degree: { type: Type.STRING, description: "The degree obtained (e.g., 'Bachelor of Science in Computer Science')." },
+        institution: { type: Type.STRING, description: "The name of the institution (e.g., 'University of Texas at Austin')." },
+        dates: { type: Type.STRING, description: "The graduation year or dates of attendance (e.g., '2018 - 2022' or 'May 2022')." },
+    },
+    required: ["degree", "institution"],
+};
+
+const headshotPresetSchema = {
+    type: Type.OBJECT,
+    properties: {
+        style: {
+            type: Type.STRING,
+            description: "The recommended overall style for the headshot.",
+        },
+        businessCategory: {
+            type: Type.STRING,
+            description: "The business category that best fits the professional.",
+        },
+        lighting: {
+            type: Type.STRING,
+            description: "The suggested lighting for the headshot.",
+        },
+        setting: {
+            type: Type.STRING,
+            description: "The recommended background or setting.",
+        },
+        reasoning: {
+            type: Type.STRING,
+            description: "A brief, 1-2 sentence explanation for these choices, based on the resume."
+        }
+    },
+    required: ["style", "businessCategory", "lighting", "setting", "reasoning"],
 };
 
 /**
@@ -1045,6 +1149,47 @@ export const analyzeDocuments = async (resumeTexts: string[], jdText: string): P
     }
 };
 
+export const generateSummaryOptions = async (baseSummary: string, jobDescription: string): Promise<string[]> => {
+    const prompt = `
+        Act as a professional resume writer. Based on the following base summary and an optional job description, generate 3 distinct versions of an executive summary.
+
+        **Base Summary (for context):**
+        ---
+        ${baseSummary}
+        ---
+
+        ${jobDescription ? `
+        **Target Job Description (for tailoring):**
+        ---
+        ${jobDescription}
+        ---
+        ` : ''}
+
+        **Instructions:**
+        1.  **Version 1:** If a job description is provided, make this version highly tailored to it, using keywords and addressing key requirements. If no JD, make it a strong, general professional summary.
+        2.  **Version 2:** Make this version more direct and results-oriented. Focus on quantifiable achievements and metrics.
+        3.  **Version 3:** Make this version slightly more creative or narrative-driven, telling a brief story about the professional's value.
+        4.  Return a valid JSON object matching the schema.
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: summaryOptionsSchema,
+            }
+        });
+        const jsonString = response.text.trim();
+        const result = JSON.parse(jsonString);
+        return result.summaries || [baseSummary, baseSummary, baseSummary]; // Fallback
+    } catch (error) {
+        console.error("Error generating summary options:", error);
+        throw new Error("Failed to generate summary options with AI.");
+    }
+};
+
 export const improveSummary = async (currentSummary: string): Promise<string> => {
     const prompt = `
         Act as a professional resume writer. Rewrite the following professional summary to be more impactful, concise, and achievement-oriented.
@@ -1092,6 +1237,33 @@ export const categorizeSkills = async (skills: string[]): Promise<CategorizedSki
     }
 };
 
+export const suggestRelatedSkills = async (skills: string[]): Promise<string[]> => {
+    const prompt = `
+        Act as a career coach. Based on the following list of skills from a user's resume, suggest 5-7 additional, related skills that would strengthen their profile. Focus on skills that are complementary or represent a logical next step in their career progression.
+        
+        **Current Skills:**
+        - ${skills.join('\n- ')}
+
+        Return a valid JSON object matching the schema. Only return the list of skill names.
+    `;
+    try {
+        const response = await ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: suggestedSkillsSchema,
+            }
+        });
+        const jsonString = response.text.trim();
+        const result = JSON.parse(jsonString);
+        return result.suggestedSkills || [];
+    } catch (error) {
+        console.error("Error suggesting skills:", error);
+        throw new Error("Failed to suggest skills with AI.");
+    }
+};
+
 export const transcribeAndSummarizeAudio = async (audioBase64: string, mimeType: string): Promise<string> => {
     const prompt = `This audio recording contains a user's verbal description of their professional background. Please transcribe the audio and then rewrite the transcription into a concise, professional summary suitable for a resume. The summary should be 2-4 sentences long and written in a professional tone. Return only the final summary as a string.`;
 
@@ -1111,5 +1283,159 @@ export const transcribeAndSummarizeAudio = async (audioBase64: string, mimeType:
     } catch (error) {
         console.error("Error transcribing audio:", error);
         throw new Error("Failed to process audio with AI.");
+    }
+};
+
+export const extractJobTitleFromJD = async (jobDescription: string): Promise<{ jobTitle: string; warning?: string }> => {
+    const prompt = `
+        Analyze the following job description and extract the primary job title. Return only the job title.
+
+        **Job Description:**
+        ---
+        ${jobDescription}
+        ---
+
+        Return a valid JSON object matching the schema.
+    `;
+    try {
+        const response = await ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: jobTitleSchema,
+            }
+        });
+        const jsonString = response.text.trim();
+        const parsedResult = JSON.parse(jsonString);
+        return { jobTitle: parsedResult.jobTitle };
+    } catch (error: any) {
+        console.warn("Could not extract job title from JD:", error);
+        
+        let warningMessage = "The AI failed to automatically extract the job title. A default name will be used, which you can edit now.";
+        
+        const errorMessage = typeof error === 'string' ? error : error.message || '';
+        if (errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED')) {
+            warningMessage = "API quota limit reached. The AI couldn't extract the job title. Please check your Gemini API plan. A default name is suggested, which you can edit now.";
+        }
+        
+        return { jobTitle: "New Application", warning: warningMessage };
+    }
+};
+
+export type EnhancementSuggestion = {
+    type: string;
+    text: string;
+};
+
+export type AchievementSuggestion = {
+    original: string;
+    enhancements: EnhancementSuggestion[];
+};
+
+export const generateEnhancementSuggestions = async (achievements: string[]): Promise<AchievementSuggestion[]> => {
+    const prompt = `
+        Act as a professional resume writer. For each of the following resume achievement bullet points, provide 2-3 concrete enhancement suggestions. The goal is to make them more impactful.
+
+        **Achievements to Enhance:**
+        ${achievements.map(a => `- ${a}`).join('\n')}
+
+        **Instructions:**
+        1.  For each achievement, generate 2-3 rewritten versions.
+        2.  Each suggestion should have a 'type' and the 'text' of the rewritten achievement.
+        3.  Suggestion types should be one of: 'Add Metrics' (if you're adding quantifiable data), 'Use Action Verb' (if you're replacing a weak verb with a stronger one), or 'Clarify Impact' (if you're rephrasing to better show the business value).
+        4.  Return a valid JSON object matching the schema.
+    `;
+    
+    try {
+        const response = await ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: enhancementSuggestionsSchema,
+            }
+        });
+        const jsonString = response.text.trim();
+        const result = JSON.parse(jsonString);
+        return result.suggestions || [];
+    } catch (error) {
+        console.error("Error generating enhancement suggestions:", error);
+        throw new Error("Failed to generate enhancement suggestions with AI.");
+    }
+};
+
+export const parseEducationFromText = async (text: string): Promise<EducationSection> => {
+    const prompt = `
+        Parse the following text, which is a user's spoken description of their education, and extract the institution, degree, and dates.
+        
+        **Text to Parse:**
+        ---
+        ${text}
+        ---
+
+        Return a valid JSON object matching the schema.
+    `;
+    try {
+        const response = await ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: educationSchema,
+            }
+        });
+        const jsonString = response.text.trim();
+        return JSON.parse(jsonString);
+    } catch (error) {
+        console.error("Error parsing education text:", error);
+        throw new Error("AI failed to understand the education details. Please try again or enter manually.");
+    }
+};
+
+export const generateHeadshotPresetFromResume = async (resumeAnalysis: InitialAnalysisResult): Promise<HeadshotPresetSettings> => {
+    const styleOptions = ['Corporate', 'Business Casual', 'International Business', 'Federal/Government', 'Country Club Formal', 'West Coast Business (California)', 'Southern Business (Texas)'];
+    const categoryOptions = ['Executive', 'Finance', 'Sales', 'Human Resources', 'Operations & Logistics', 'IT & Engineering', 'Product Management', 'Security', 'Blue Collar Managerial'];
+    const lightingOptions = ['Studio Lighting', 'Natural Sunlight', 'Dramatic Lighting', 'Soft Light'];
+    const settingOptions = ['Neutral Office Background', 'Outdoor (Nature)', 'Modern Abstract Background', 'Bookshelf Backdrop'];
+
+    const prompt = `
+        Act as a professional branding consultant and corporate photographer. Your task is to analyze the provided resume analysis and suggest the optimal settings for a professional headshot. The goal is to create a headshot that aligns with the user's seniority, industry, and professional brand.
+
+        **Resume Analysis:**
+        ---
+        **Summary:** ${resumeAnalysis.summary}
+        **Experience:**
+        ${resumeAnalysis.experience.map(exp => `- ${exp.title} at ${exp.company}`).join('\n')}
+        **Key Skills:** ${resumeAnalysis.keySkills.join(', ')}
+        ---
+
+        **Available Headshot Settings:**
+        - **Style Options:** ${styleOptions.join(', ')}
+        - **Business Category Options:** ${categoryOptions.join(', ')}
+        - **Lighting Options:** ${lightingOptions.join(', ')}
+        - **Setting Options:** ${settingOptions.join(', ')}
+
+        **Instructions:**
+        1.  Analyze the resume to determine the user's industry, seniority level (e.g., executive, mid-level, junior), and overall professional tone (e.g., formal, tech-focused, creative).
+        2.  Based on your analysis, select the ONE most appropriate option from EACH of the four settings categories provided.
+        3.  Provide a brief, 1-2 sentence 'reasoning' for your choices, explaining why they are a good fit for the user's professional brand.
+        4.  The output must be a valid JSON object that strictly adheres to the provided schema.
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: headshotPresetSchema,
+            }
+        });
+        const jsonString = response.text.trim();
+        return JSON.parse(jsonString);
+    } catch (error) {
+        console.error("Error generating headshot preset:", error);
+        throw new Error("AI failed to generate a headshot preset from the resume. Please try again.");
     }
 };

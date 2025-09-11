@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { InitialAnalysisResult, CategorizedSkills, ResumeSection, EducationSection } from '../../types';
+import { InitialAnalysisResult, CategorizedSkills, EducationSection } from '../../types';
 import { improveSummary, categorizeSkills, transcribeAndSummarizeAudio } from '../../services/geminiService';
 import { SparklesIcon } from '../icons/SparklesIcon';
 import { TimelineIllustration } from '../illustrations/TimelineIllustration';
@@ -7,7 +8,6 @@ import Modal from '../Modal';
 import { ChevronDownIcon } from '../icons/ChevronDownIcon';
 import { UserCircleIcon } from '../icons/UserCircleIcon';
 import { DocumentTextIcon } from '../icons/DocumentTextIcon';
-import { BriefcaseIcon } from '../icons/BriefcaseIcon';
 import { AcademicCapIcon } from '../icons/AcademicCapIcon';
 import { WandIcon } from '../icons/WandIcon';
 import { MicrophoneIcon } from '../icons/MicrophoneIcon';
@@ -15,7 +15,7 @@ import AudioRecorder from '../AudioRecorder';
 import { XMarkIcon } from '../icons/XMarkIcon';
 import { PlusIcon } from '../icons/PlusIcon';
 
-interface Phase2InsightProps {
+interface Phase2ResumeEnhancementProps {
   initialAnalysis: InitialAnalysisResult | null;
   onComplete: (updatedResume: InitialAnalysisResult) => void;
 }
@@ -49,8 +49,7 @@ const AccordionSection: React.FC<{
     );
 };
 
-
-const Phase2Insight: React.FC<Phase2InsightProps> = ({ initialAnalysis, onComplete }) => {
+const Phase2ResumeEnhancement: React.FC<Phase2ResumeEnhancementProps> = ({ initialAnalysis, onComplete }) => {
     const [editableResume, setEditableResume] = useState<InitialAnalysisResult | null>(initialAnalysis);
     const [categorizedSkills, setCategorizedSkills] = useState<CategorizedSkills[]>([]);
     const [isLoading, setIsLoading] = useState({ summary: false, skills: false, voice: false });
@@ -61,6 +60,10 @@ const Phase2Insight: React.FC<Phase2InsightProps> = ({ initialAnalysis, onComple
         if (initialAnalysis && initialAnalysis.keySkills.length > 0) {
             handleCategorizeSkills(initialAnalysis.keySkills);
         }
+    }, [initialAnalysis]);
+    
+    useEffect(() => {
+        setEditableResume(initialAnalysis);
     }, [initialAnalysis]);
 
     const handleCategorizeSkills = async (skills: string[]) => {
@@ -123,16 +126,6 @@ const Phase2Insight: React.FC<Phase2InsightProps> = ({ initialAnalysis, onComple
         });
     };
     
-    const handleExperienceChange = (index: number, field: keyof ResumeSection, value: string | string[]) => {
-        setEditableResume(prev => {
-            if (!prev) return null;
-            const newExperience = [...prev.experience];
-            // @ts-ignore
-            newExperience[index][field] = value;
-            return { ...prev, experience: newExperience };
-        });
-    }
-
     const handleEducationChange = (index: number, field: keyof EducationSection, value: string) => {
         setEditableResume(prev => {
             if (!prev) return null;
@@ -180,7 +173,7 @@ const Phase2Insight: React.FC<Phase2InsightProps> = ({ initialAnalysis, onComple
                 <div>
                     <h2 className="text-2xl font-bold text-neutral-800">Phase 2: Resume Enhancement Wizard</h2>
                     <p className="mt-2 text-neutral-600">
-                        The AI has structured your resume. Review and enhance each section using the interactive editors and AI tools.
+                        The AI has structured your resume. Review and enhance each section using the interactive editors and AI tools. Your work experience will be handled in the next step.
                     </p>
                 </div>
             </div>
@@ -235,30 +228,6 @@ const Phase2Insight: React.FC<Phase2InsightProps> = ({ initialAnalysis, onComple
                  )}
             </AccordionSection>
 
-            <AccordionSection title="Experience" icon={<BriefcaseIcon className="h-6 w-6 text-neutral-500" />}>
-                <div className="space-y-6">
-                    {editableResume.experience.map((exp, index) => (
-                        <div key={index} className="p-4 bg-neutral-50 rounded-lg border border-neutral-200">
-                            <input value={exp.title} onChange={e => handleExperienceChange(index, 'title', e.target.value)} className="font-bold text-lg w-full p-1 -ml-1 rounded hover:bg-neutral-100" />
-                            <div className="flex space-x-2 text-sm text-neutral-600">
-                                <input value={exp.company} onChange={e => handleExperienceChange(index, 'company', e.target.value)} className="w-full p-1 -ml-1 rounded hover:bg-neutral-100" />
-                                <span>|</span>
-                                <input value={exp.dates} onChange={e => handleExperienceChange(index, 'dates', e.target.value)} className="w-full p-1 rounded hover:bg-neutral-100" />
-                            </div>
-                            <ul className="mt-2 list-disc list-inside space-y-1">
-                                {exp.achievements.map((ach, achIndex) => (
-                                    <li key={achIndex}><input value={ach} onChange={e => {
-                                        const newAchievements = [...exp.achievements];
-                                        newAchievements[achIndex] = e.target.value;
-                                        handleExperienceChange(index, 'achievements', newAchievements);
-                                    }} className="w-full p-1 rounded hover:bg-neutral-100" /></li>
-                                ))}
-                            </ul>
-                        </div>
-                    ))}
-                </div>
-            </AccordionSection>
-
             <AccordionSection title="Education" icon={<AcademicCapIcon className="h-6 w-6 text-neutral-500" />}>
                 <div className="space-y-4">
                     {editableResume.education.map((edu, index) => (
@@ -272,7 +241,7 @@ const Phase2Insight: React.FC<Phase2InsightProps> = ({ initialAnalysis, onComple
             
             <div className="flex justify-end pt-6 border-t border-neutral-200">
                 <button onClick={handleFinish} className="px-8 py-2 font-medium rounded-md text-white bg-neutral-800 hover:bg-neutral-700">
-                    Next: Experience Deep Dive
+                    Next: Confirm Experience
                 </button>
             </div>
              <Modal isOpen={isVoiceModalOpen} onClose={() => setIsVoiceModalOpen(false)} title="Improve Summary with Voice">
@@ -283,4 +252,4 @@ const Phase2Insight: React.FC<Phase2InsightProps> = ({ initialAnalysis, onComple
     );
 };
 
-export default Phase2Insight;
+export default Phase2ResumeEnhancement;
