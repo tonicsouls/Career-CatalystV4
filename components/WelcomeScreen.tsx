@@ -8,6 +8,7 @@ import { CVIcon } from './icons/CVIcon';
 import { LinkedInIcon } from './icons/LinkedInIcon';
 import { MegaphoneIcon } from './icons/MegaphoneIcon';
 import { ArchiveBoxIcon } from './icons/ArchiveBoxIcon';
+import { Logo } from './Logo';
 
 interface WelcomeScreenProps {
   onStartQuickStart: () => void;
@@ -24,6 +25,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartQuickStart, onGoTo
             <Cityscape />
         </div>
         <div className="relative z-10 bg-white/50 backdrop-blur-sm p-8 rounded-xl max-w-4xl">
+            <Logo className="h-16 w-16 mx-auto mb-6 text-neutral-800" />
             <h1 className="text-4xl sm:text-5xl font-bold text-neutral-800">Welcome to Career Catalyst</h1>
             <p className="mt-4 text-lg text-neutral-600 max-w-2xl mx-auto">
                 Your AI-powered suite for accelerating your career transition. Let's build your standout professional assets.

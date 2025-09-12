@@ -1,42 +1,12 @@
 import React from 'react';
 
 export const Logo: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-  <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" {...props}>
-    <path
-      d="M24 6C14.058 6 6 14.058 6 24C6 33.942 14.058 42 24 42C33.942 42 42 33.942 42 24"
-      stroke="currentColor"
-      strokeWidth="4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M24 6L30.5 12.5"
-      stroke="currentColor"
-      strokeWidth="4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M24 42L17.5 35.5"
-      stroke="currentColor"
-      strokeWidth="4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M6 24L12.5 17.5"
-      stroke="currentColor"
-      strokeWidth="4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M42 24L35.5 30.5"
-      stroke="currentColor"
-      strokeWidth="4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <circle cx="24" cy="24" r="4" fill="currentColor" />
+  <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+    <path d="M20 3.33331C10.8333 3.33331 3.33331 10.8333 3.33331 20C3.33331 29.1666 10.8333 36.6666 20 36.6666C29.1666 36.6666 36.6666 29.1666 36.6666 20" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M20 3.33331L25.4167 8.74998" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M20 36.6666L14.5833 31.25" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M3.33331 20L8.74998 14.5833" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M36.6666 20L31.25 25.4167" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+    <circle cx="20" cy="20" r="3.33333" fill="currentColor"/>
   </svg>
 );
